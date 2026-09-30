@@ -1,0 +1,21 @@
+# Rebuilds the addon from the upstream playlist and force-pushes it to gh-pages,
+# which GitHub Pages serves. The daily push also keeps the schedule from being
+# auto-disabled (GitHub pauses cron workflows after 60 days without activity).
+name: build
+on:
+  schedule: [{ cron: "0 0 * * *" }]
+  workflow_dispatch:
+  push: { branches: [main] }
+permissions: { contents: write }
+concurrency: { group: build, cancel-in-progress: true }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 build.py site && touch site/.nojekyll
+      - run: |
+          cd site
+          git init -q -b gh-pages && git add -A
+          git -c user.name=github-actions -c user.email=github-actions@users.noreply.github.com commit -qm "channels $(date -u +%F)"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" gh-pages
